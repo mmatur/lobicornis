@@ -115,7 +115,7 @@ default:
   # External repositories whose issues may be auto-closed from a merged PR body.
   # Entries are of the form "owner/repo", or "owner/*" to allow a whole org.
   # The PR's own repository is always allowed; only cross-repo references need to be listed here.
-  closeIssuesFrom: []
+  allowCloseIssuesOn: []
 
 # defines override of the default configuration by repository.
 repositories:
@@ -127,7 +127,7 @@ repositories:
     minLightReview: 1
     minReview: 1
     needMilestone: false
-    closeIssuesFrom:
+    allowCloseIssuesOn:
       - foo/hub-issues
       - foo/*
 ```

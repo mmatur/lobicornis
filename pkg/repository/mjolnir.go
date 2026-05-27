@@ -148,7 +148,7 @@ func (m Mjolnir) parseIssueFixes(ctx context.Context, text string) []issueRef {
 			case raw[4] != "":
 				owner, name, numStr = raw[2], raw[3], raw[4]
 				if !m.repoAllowed(owner, name) {
-					logger.Warn().Str("url", raw[0]).Msg("ignoring issue reference: repository not in closeIssuesFrom allow-list")
+					logger.Warn().Str("url", raw[0]).Msg("ignoring issue reference: repository not in allowCloseIssuesOn allow-list")
 					continue
 				}
 			default:

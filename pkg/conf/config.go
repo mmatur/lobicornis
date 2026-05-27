@@ -163,8 +163,8 @@ func applyDefault(config *RepoConfig, cfg Configuration) {
 		config.CommitMessage = cfg.Default.CommitMessage
 	}
 
-	if config.CloseIssuesFrom == nil {
-		config.CloseIssuesFrom = cfg.Default.CloseIssuesFrom
+	if config.AllowCloseIssuesOn == nil {
+		config.AllowCloseIssuesOn = cfg.Default.AllowCloseIssuesOn
 	}
 }
 
