@@ -7,53 +7,81 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const (
+	testOwner = "owner"
+	testRepo  = "repo"
+)
+
 func Test_parseIssueFixes(t *testing.T) {
 	testCases := []struct {
-		name            string
-		text            string
-		expectedNumbers []int
+		name         string
+		text         string
+		allowedRepos []string
+		expected     []issueRef
 	}{
 		{
 			name: "only letters",
 			text: `
 	Fixes dlsqj
 `,
-			expectedNumbers: nil,
+			expected: nil,
 		},
 		{
 			name: "valid issue numbers coma",
 			text: `
 	Fixes #13 #14, #15,#16,
 `,
-			expectedNumbers: []int{13, 14, 15, 16},
+			expected: []issueRef{
+				{owner: testOwner, name: testRepo, number: 13},
+				{owner: testOwner, name: testRepo, number: 14},
+				{owner: testOwner, name: testRepo, number: 15},
+				{owner: testOwner, name: testRepo, number: 16},
+			},
 		},
 		{
 			name: "valid issue numbers space",
 			text: `
 	Fixes #13 #14 #15 #16
 `,
-			expectedNumbers: []int{13, 14, 15, 16},
+			expected: []issueRef{
+				{owner: testOwner, name: testRepo, number: 13},
+				{owner: testOwner, name: testRepo, number: 14},
+				{owner: testOwner, name: testRepo, number: 15},
+				{owner: testOwner, name: testRepo, number: 16},
+			},
 		},
 		{
 			name: "invalid pattern",
 			text: `
 	Fixes #13#14,#15,#16,
 `,
-			expectedNumbers: []int{13},
+			expected: []issueRef{
+				{owner: testOwner, name: testRepo, number: 13},
+			},
 		},
 		{
 			name: "french style",
 			text: `
 	Fixes : #13,#14,#15,#16,
 `,
-			expectedNumbers: []int{13, 14, 15, 16},
+			expected: []issueRef{
+				{owner: testOwner, name: testRepo, number: 13},
+				{owner: testOwner, name: testRepo, number: 14},
+				{owner: testOwner, name: testRepo, number: 15},
+				{owner: testOwner, name: testRepo, number: 16},
+			},
 		},
 		{
 			name: "valid issue numbers coma and :",
 			text: `
 	Fixes: #13,#14,#15,#16,
 `,
-			expectedNumbers: []int{13, 14, 15, 16},
+			expected: []issueRef{
+				{owner: testOwner, name: testRepo, number: 13},
+				{owner: testOwner, name: testRepo, number: 14},
+				{owner: testOwner, name: testRepo, number: 15},
+				{owner: testOwner, name: testRepo, number: 16},
+			},
 		},
 		{
 			name: "multiple separate fixes blocks",
@@ -61,7 +89,10 @@ func Test_parseIssueFixes(t *testing.T) {
 	This partially fixes #11375 by proposing an alternative.
 	Fixes #12786
 `,
-			expectedNumbers: []int{11375, 12786},
+			expected: []issueRef{
+				{owner: testOwner, name: testRepo, number: 11375},
+				{owner: testOwner, name: testRepo, number: 12786},
+			},
 		},
 		{
 			name: "URL form same repo",
@@ -69,28 +100,79 @@ func Test_parseIssueFixes(t *testing.T) {
 	Fixes https://github.com/owner/repo/issues/12820
 	Fixes https://github.com/owner/repo/issues/12748
 `,
-			expectedNumbers: []int{12820, 12748},
+			expected: []issueRef{
+				{owner: testOwner, name: testRepo, number: 12820},
+				{owner: testOwner, name: testRepo, number: 12748},
+			},
 		},
 		{
-			name: "URL form cross-repo ignored",
+			name: "URL form cross-repo denied by default",
 			text: `
 	Fixes https://github.com/other/different/issues/9999
 `,
-			expectedNumbers: nil,
+			expected: nil,
+		},
+		{
+			name: "URL form cross-repo allowed explicitly",
+			text: `
+	Fixes https://github.com/owner/hub-issues/issues/42
+`,
+			allowedRepos: []string{"owner/hub-issues"},
+			expected: []issueRef{
+				{owner: testOwner, name: "hub-issues", number: 42},
+			},
+		},
+		{
+			name: "URL form cross-org allowed explicitly",
+			text: `
+	Fixes https://github.com/other/different/issues/9999
+`,
+			allowedRepos: []string{"other/different"},
+			expected: []issueRef{
+				{owner: "other", name: "different", number: 9999},
+			},
+		},
+		{
+			name: "URL form org wildcard",
+			text: `
+	Fixes https://github.com/owner/sibling/issues/7
+	Fixes https://github.com/owner/another/issues/8
+`,
+			allowedRepos: []string{"owner/*"},
+			expected: []issueRef{
+				{owner: testOwner, name: "sibling", number: 7},
+				{owner: testOwner, name: "another", number: 8},
+			},
+		},
+		{
+			name: "URL form allow-list does not match unrelated repo",
+			text: `
+	Fixes https://github.com/owner/hub-issues/issues/1
+	Fixes https://github.com/owner/stranger/issues/2
+`,
+			allowedRepos: []string{"owner/hub-issues"},
+			expected: []issueRef{
+				{owner: testOwner, name: "hub-issues", number: 1},
+			},
 		},
 		{
 			name: "mixed hash and URL",
 			text: `
 	Closes #100, https://github.com/owner/repo/issues/200
 `,
-			expectedNumbers: []int{100, 200},
+			expected: []issueRef{
+				{owner: testOwner, name: testRepo, number: 100},
+				{owner: testOwner, name: testRepo, number: 200},
+			},
 		},
 		{
 			name: "trailing period",
 			text: `
 	Closes #12956.
 `,
-			expectedNumbers: []int{12956},
+			expected: []issueRef{
+				{owner: testOwner, name: testRepo, number: 12956},
+			},
 		},
 		{
 			name: "closed and resolved keywords",
@@ -98,7 +180,10 @@ func Test_parseIssueFixes(t *testing.T) {
 	Closed #1
 	Resolved #2
 `,
-			expectedNumbers: []int{1, 2},
+			expected: []issueRef{
+				{owner: testOwner, name: testRepo, number: 1},
+				{owner: testOwner, name: testRepo, number: 2},
+			},
 		},
 		{
 			name: "deduplicate same issue",
@@ -106,19 +191,31 @@ func Test_parseIssueFixes(t *testing.T) {
 	Fixes #13 #13
 	Closes #13
 `,
-			expectedNumbers: []int{13},
+			expected: []issueRef{
+				{owner: testOwner, name: testRepo, number: 13},
+			},
+		},
+		{
+			name: "deduplicate hash and URL referring to same issue",
+			text: `
+	Fixes #42
+	Closes https://github.com/owner/repo/issues/42
+`,
+			expected: []issueRef{
+				{owner: testOwner, name: testRepo, number: 42},
+			},
 		},
 	}
-
-	mjolnir := newMjolnir(nil, "owner", "repo", true)
 
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			issueNumbers := mjolnir.parseIssueFixes(context.Background(), test.text)
+			mjolnir := newMjolnir(nil, testOwner, testRepo, true, test.allowedRepos)
 
-			assert.Equal(t, test.expectedNumbers, issueNumbers)
+			refs := mjolnir.parseIssueFixes(context.Background(), test.text)
+
+			assert.Equal(t, test.expected, refs)
 		})
 	}
 }

@@ -112,6 +112,10 @@ default:
   addErrorInComment: false
   # When the merge method is squash, define the strategy to create the commit message. (github|empty|description)
   commitMessage: empty
+  # External repositories whose issues may be auto-closed from a merged PR body.
+  # Entries are of the form "owner/repo", or "owner/*" to allow a whole org.
+  # The PR's own repository is always allowed; only cross-repo references need to be listed here.
+  closeIssuesFrom: []
 
 # defines override of the default configuration by repository.
 repositories:
@@ -123,6 +127,9 @@ repositories:
     minLightReview: 1
     minReview: 1
     needMilestone: false
+    closeIssuesFrom:
+      - foo/hub-issues
+      - foo/*
 ```
 
 ## Examples
