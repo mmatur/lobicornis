@@ -128,7 +128,7 @@ repositories:
     minReview: 1
     needMilestone: false
     allowCloseIssuesOn:
-      - foo/hub-issues
+      - foo/other-repo
       - foo/*
 ```
 
