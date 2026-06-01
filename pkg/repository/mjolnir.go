@@ -76,11 +76,11 @@ func (m Mjolnir) CloseRelatedIssues(ctx context.Context, pr *github.PullRequest)
 			}
 		}
 
-		// On the main branch, GitHub auto-links the PR to the issue, so the
+		// On the default branch, GitHub auto-links the PR to the issue, so the
 		// "Closed by #X." comment is only useful for backport branches.
 		// The auto-link only fires for same-repo references; for cross-repo we
 		// always leave a back-pointer comment.
-		if ref.owner == m.owner && ref.name == m.name && pr.Base.GetRef() == mainBranch {
+		if m.isAutoLinked(pr, ref) {
 			continue
 		}
 
@@ -97,6 +97,14 @@ func (m Mjolnir) CloseRelatedIssues(ctx context.Context, pr *github.PullRequest)
 	}
 
 	return nil
+}
+
+// isAutoLinked reports whether GitHub auto-links the PR to the referenced issue,
+// which makes the explicit "Closed by #X." back-pointer comment redundant.
+// The auto-link only fires for same-repository references merged into the
+// repository default branch (which may be "main", "master", or custom).
+func (m Mjolnir) isAutoLinked(pr *github.PullRequest, ref issueRef) bool {
+	return ref.owner == m.owner && ref.name == m.name && pr.Base.GetRef() == pr.Base.GetRepo().GetDefaultBranch()
 }
 
 func (m Mjolnir) closeIssue(ctx context.Context, pr *github.PullRequest, ref issueRef) error {

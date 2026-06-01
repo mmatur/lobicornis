@@ -11,8 +11,6 @@ import (
 	"github.com/traefik/lobicornis/v3/pkg/conf"
 )
 
-const mainBranch = "master"
-
 type numbered interface {
 	GetNumber() int
 }

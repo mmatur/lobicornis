@@ -4,12 +4,15 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/go-github/v74/github"
 	"github.com/stretchr/testify/assert"
 )
 
 const (
 	testOwner = "owner"
 	testRepo  = "repo"
+
+	branchMain = "main"
 )
 
 func Test_parseIssueFixes(t *testing.T) {
@@ -216,6 +219,78 @@ func Test_parseIssueFixes(t *testing.T) {
 			refs := mjolnir.parseIssueFixes(context.Background(), test.text)
 
 			assert.Equal(t, test.expected, refs)
+		})
+	}
+}
+
+func Test_isAutoLinked(t *testing.T) {
+	testCases := []struct {
+		name          string
+		baseRef       string
+		defaultBranch string
+		ref           issueRef
+		expected      bool
+	}{
+		{
+			name:          "same repo on default branch master",
+			baseRef:       "master",
+			defaultBranch: "master",
+			ref:           issueRef{owner: testOwner, name: testRepo, number: 1},
+			expected:      true,
+		},
+		{
+			name:          "same repo on default branch main",
+			baseRef:       branchMain,
+			defaultBranch: branchMain,
+			ref:           issueRef{owner: testOwner, name: testRepo, number: 1},
+			expected:      true,
+		},
+		{
+			name:          "same repo on custom default branch",
+			baseRef:       "develop",
+			defaultBranch: "develop",
+			ref:           issueRef{owner: testOwner, name: testRepo, number: 1},
+			expected:      true,
+		},
+		{
+			name:          "same repo on non-default branch",
+			baseRef:       "v1.0",
+			defaultBranch: branchMain,
+			ref:           issueRef{owner: testOwner, name: testRepo, number: 1},
+			expected:      false,
+		},
+		{
+			name:          "cross-repo on default branch",
+			baseRef:       branchMain,
+			defaultBranch: branchMain,
+			ref:           issueRef{owner: testOwner, name: "other-repo", number: 1},
+			expected:      false,
+		},
+		{
+			name:          "cross-org on default branch",
+			baseRef:       branchMain,
+			defaultBranch: branchMain,
+			ref:           issueRef{owner: "other", name: testRepo, number: 1},
+			expected:      false,
+		},
+	}
+
+	for _, test := range testCases {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			mjolnir := newMjolnir(nil, testOwner, testRepo, true, nil)
+
+			pr := &github.PullRequest{
+				Base: &github.PullRequestBranch{
+					Ref: github.Ptr(test.baseRef),
+					Repo: &github.Repository{
+						DefaultBranch: github.Ptr(test.defaultBranch),
+					},
+				},
+			}
+
+			assert.Equal(t, test.expected, mjolnir.isAutoLinked(pr, test.ref))
 		})
 	}
 }

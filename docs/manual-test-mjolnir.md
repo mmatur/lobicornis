@@ -5,9 +5,11 @@ End-to-end manual test for the `Fixes/Closes/Resolves` issue parser in
 with dry-run **off** so issues actually close.
 
 > **Verify against the final state of the PR.** This runbook targets the core bug
-> fixes. The `mainBranch` constant in `mjolnir.go` is currently `"master"`; if that
-> handling changes, the "comment is skipped on the main branch" behavior shifts and
-> the notes below about base `main` always posting a comment may no longer hold.
+> fixes. The "comment is skipped on the default branch" behavior keys off the
+> repository's actual default branch (`pr.Base.Repo.DefaultBranch`), so it works
+> whether the default branch is `main`, `master`, or custom. Same-repo closes on a
+> default-branch PR skip the "Closed by" comment (GitHub auto-links); everything
+> else (non-default branch, cross-repo) still posts one.
 
 ## Behaviors under test (core)
 
@@ -66,9 +68,10 @@ extra:
 ```
 
 Defaults being overridden (see `pkg/conf/config.go`): `dryRun` defaults to true,
-`minReview` to 1, `needMilestone` to true. PR base is `main`; since the `mainBranch`
-constant is `"master"`, every same-repo close on a `main`-base PR posts a "Closed by"
-comment — expected, not the skip path.
+`minReview` to 1, `needMilestone` to true. The test repos use `main` as their
+default branch, so a same-repo close on a `main`-base PR takes the skip path (no
+"Closed by" comment — GitHub auto-links). To exercise the comment path, close from
+a non-default branch (e.g. a backport branch) or a cross-repo reference.
 
 ## PRs and expected results
 
@@ -90,6 +93,8 @@ Fixes https://github.com/traefik-workshops/repo-b/issues/b1
 
 Expected after the bot merges PR1:
 - `a1, a2, a3, a4, a5` CLOSED; `a3` closed exactly once (dedup of `#a3` + URL).
+- No "Closed by" comment on `a1`–`a5`: same-repo close on the default branch
+  (`main`) takes the skip path (GitHub auto-links).
 - `b1` stays OPEN; debug log shows the warn "repository not in allowCloseIssuesOn allow-list".
 
 ### RUN 2 — cross-repo allow
@@ -115,7 +120,7 @@ RUN 2. Watch the debug logs for `closes issue .../#N` lines and the allow-list w
 
 ## Verification checklist
 
-- [ ] `repo-a` `a1`–`a5` closed; `a3` not double-processed (single close, single comment).
+- [ ] `repo-a` `a1`–`a5` closed; `a3` not double-processed (single close, no comment — default-branch skip path).
 - [ ] `repo-b` `b1` OPEN after RUN 1 + warn logged (deny).
 - [ ] `repo-b` `b2` closed after RUN 2 + "Closed by" comment (allow).
 
