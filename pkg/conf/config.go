@@ -162,6 +162,10 @@ func applyDefault(config *RepoConfig, cfg Configuration) {
 	if config.CommitMessage == nil {
 		config.CommitMessage = cfg.Default.CommitMessage
 	}
+
+	if config.AllowCloseIssuesOn == nil {
+		config.AllowCloseIssuesOn = cfg.Default.AllowCloseIssuesOn
+	}
 }
 
 func validate(cfg Configuration) error {

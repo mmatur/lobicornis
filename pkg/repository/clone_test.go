@@ -2,7 +2,9 @@ package repository
 
 import (
 	"context"
+	"io/fs"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -13,6 +15,33 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/traefik/lobicornis/v3/pkg/conf"
 )
+
+// scheduleTempDirCleanup ensures dir is removed even when it contains git
+// pack/index files (written with 0444), which can defeat the default
+// t.TempDir cleanup on Linux runners. Registered after t.TempDir so it runs
+// first (cleanups are LIFO); the TempDir cleanup then sees an empty path.
+func scheduleTempDirCleanup(t *testing.T, dir string) {
+	t.Helper()
+	t.Cleanup(func() {
+		// Chdir out so the directory is not the process's cwd at unlink time.
+		// t.Chdir cannot be used here: it is only valid from the test body.
+		_ = os.Chdir(filepath.Dir(dir)) //nolint:usetesting
+
+		_ = filepath.WalkDir(dir, func(path string, d fs.DirEntry, walkErr error) error {
+			if walkErr != nil {
+				return nil //nolint:nilerr // continue walking, best-effort cleanup
+			}
+			mode := fs.FileMode(0o600)
+			if d.IsDir() {
+				mode = 0o700
+			}
+			_ = os.Chmod(path, mode) //nolint:gosec // G122: TOCTOU is not a concern on a test-owned temp dir
+			return nil
+		})
+
+		_ = os.RemoveAll(dir)
+	})
+}
 
 func TestClone_PullRequestForUpdate(t *testing.T) {
 	testCases := []struct {
@@ -48,6 +77,7 @@ func TestClone_PullRequestForUpdate(t *testing.T) {
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
 			dir := t.TempDir()
+			scheduleTempDirCleanup(t, dir)
 			t.Chdir(dir)
 
 			tempDir, err := os.Getwd()
@@ -109,6 +139,7 @@ func TestClone_PullRequestForMerge(t *testing.T) {
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
 			dir := t.TempDir()
+			scheduleTempDirCleanup(t, dir)
 			t.Chdir(dir)
 
 			tempDir, err := os.Getwd()

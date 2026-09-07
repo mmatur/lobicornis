@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -70,8 +69,8 @@ func (r *Repository) cloneAndUpdate(ctx context.Context, pr *github.PullRequest)
 	tempDir, _ := os.Getwd()
 	logger.Info().Msg(tempDir)
 
-	if isOnMainRepository(pr) && pr.Head.GetRef() == mainBranch {
-		return errors.New("the branch master on a main repository cannot be rebased")
+	if isOnMainRepository(pr) && pr.Head.GetRef() == pr.Base.GetRepo().GetDefaultBranch() {
+		return fmt.Errorf("the default branch %q on a main repository cannot be rebased", pr.Head.GetRef())
 	}
 
 	mainRemote, err := r.clone.PullRequestForUpdate(ctx, pr)

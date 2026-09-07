@@ -2,14 +2,15 @@ package conf
 
 // RepoConfig the repo configuration.
 type RepoConfig struct {
-	MergeMethod       *string `yaml:"mergeMethod,omitempty"`
-	MinLightReview    *int    `yaml:"minLightReview,omitempty"`
-	MinReview         *int    `yaml:"minReview,omitempty"`
-	NeedMilestone     *bool   `yaml:"needMilestone,omitempty"`
-	CheckNeedUpToDate *bool   `yaml:"checkNeedUpToDate,omitempty"`
-	ForceNeedUpToDate *bool   `yaml:"forceNeedUpToDate,omitempty"`
-	AddErrorInComment *bool   `yaml:"addErrorInComment,omitempty"`
-	CommitMessage     *string `yaml:"commitMessage,omitempty"`
+	MergeMethod        *string  `yaml:"mergeMethod,omitempty"`
+	MinLightReview     *int     `yaml:"minLightReview,omitempty"`
+	MinReview          *int     `yaml:"minReview,omitempty"`
+	NeedMilestone      *bool    `yaml:"needMilestone,omitempty"`
+	CheckNeedUpToDate  *bool    `yaml:"checkNeedUpToDate,omitempty"`
+	ForceNeedUpToDate  *bool    `yaml:"forceNeedUpToDate,omitempty"`
+	AddErrorInComment  *bool    `yaml:"addErrorInComment,omitempty"`
+	CommitMessage      *string  `yaml:"commitMessage,omitempty"`
+	AllowCloseIssuesOn []string `yaml:"allowCloseIssuesOn,omitempty"`
 }
 
 // GetMergeMethod gets merge method.
@@ -82,4 +83,11 @@ func (r *RepoConfig) GetCommitMessage() string {
 	}
 
 	return ""
+}
+
+// GetAllowCloseIssuesOn returns the list of repositories (owner/name, or owner/* wildcard)
+// whose issues may be auto-closed from a merged PR body.
+// The PR's own repository is always allowed regardless of this list.
+func (r *RepoConfig) GetAllowCloseIssuesOn() []string {
+	return r.AllowCloseIssuesOn
 }

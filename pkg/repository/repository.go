@@ -11,8 +11,6 @@ import (
 	"github.com/traefik/lobicornis/v3/pkg/conf"
 )
 
-const mainBranch = "master"
-
 type numbered interface {
 	GetNumber() int
 }
@@ -48,7 +46,7 @@ func New(client *github.Client, fullName, token string, markers conf.Markers, re
 	return &Repository{
 		client:  client,
 		clone:   newClone(gitConfig, token),
-		mjolnir: newMjolnir(client, owner, repoName, extra.DryRun),
+		mjolnir: newMjolnir(client, owner, repoName, extra.DryRun, config.GetAllowCloseIssuesOn()),
 		dryRun:  extra.DryRun,
 		markers: markers,
 		retry:   retry,
